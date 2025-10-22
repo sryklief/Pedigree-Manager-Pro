@@ -1,0 +1,35 @@
+END USER LICENSE AGREEMENT (EULA)
+
+PIGEON PEDIGREE MANAGER
+
+This End User License Agreement ("EULA") is a legal agreement between you (either an individual or a single entity) and the software publisher for the Pigeon Pedigree Manager software product, which includes computer software and may include associated media, printed materials, and "online" or electronic documentation ("SOFTWARE PRODUCT").
+
+By installing, copying, or otherwise using the SOFTWARE PRODUCT, you agree to be bound by the terms of this EULA. If you do not agree to the terms of this EULA, do not install or use the SOFTWARE PRODUCT.
+
+SOFTWARE PRODUCT LICENSE
+
+The SOFTWARE PRODUCT is protected by copyright laws and international copyright treaties, as well as other intellectual property laws and treaties. The SOFTWARE PRODUCT is licensed, not sold.
+
+1. GRANT OF LICENSE
+This EULA grants you the following rights:
+- Installation and Use: You may install and use one copy of the SOFTWARE PRODUCT on a single computer.
+- Single Device License: Each license key is valid for use on one device only.
+
+2. DESCRIPTION OF OTHER RIGHTS AND LIMITATIONS
+- Limitations on Reverse Engineering, Decompilation, and Disassembly: You may not reverse engineer, decompile, or disassemble the SOFTWARE PRODUCT.
+- No Rental/Commercial Hosting: You may not rent, lease, or lend the SOFTWARE PRODUCT.
+- Support Services: Technical support may be provided at the discretion of the software publisher.
+
+3. TERMINATION
+Without prejudice to any other rights, the software publisher may terminate this EULA if you fail to comply with the terms and conditions of this EULA.
+
+4. COPYRIGHT
+All title and copyrights in and to the SOFTWARE PRODUCT are owned by the software publisher.
+
+5. NO WARRANTIES
+The SOFTWARE PRODUCT is provided "AS IS" without warranty of any kind.
+
+6. LIMITATION OF LIABILITY
+In no event shall the software publisher be liable for any damages whatsoever arising out of the use of or inability to use this SOFTWARE PRODUCT.
+
+By clicking "I Agree" or by installing the SOFTWARE PRODUCT, you acknowledge that you have read this EULA, understand it, and agree to be bound by its terms and conditions.

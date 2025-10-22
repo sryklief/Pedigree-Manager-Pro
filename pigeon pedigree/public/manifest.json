@@ -1,0 +1,15 @@
+{
+  "short_name": "Pigeon Pedigree Manager",
+  "name": "Pigeon Pedigree Manager",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2c5aa0",
+  "background_color": "#ffffff"
+}

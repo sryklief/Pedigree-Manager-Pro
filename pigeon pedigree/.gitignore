@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+.pnp.cjs
+.pnp.data.json
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# build output
+build/
+dist/
+.tmp/
+
+# testing & coverage
+coverage/
+.nyc_output/
+
+# environment & secrets
+.env
+.env.local
+.env.*.local
+
+# logs & debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# editor & system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# misc caches
+.cache/
+.eslintcache
+.stylelintcache
+parcel-cache/
