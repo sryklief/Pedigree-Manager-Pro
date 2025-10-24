@@ -192,6 +192,11 @@ class TraditionalPdfGenerator {
     console.log('commonAncestors received:', commonAncestors);
     console.log('commonAncestors types:', commonAncestors.map(id => typeof id));
     console.log('Main bird ID:', bird.id, 'type:', typeof bird.id);
+    console.log('Duplicate colors:', settings.duplicateColors);
+    console.log('=== PDF Generation Debug ===');
+    console.log('commonAncestors received:', commonAncestors);
+    console.log('commonAncestors types:', commonAncestors.map(id => typeof id));
+    console.log('Main bird ID:', bird.id, 'type:', typeof bird.id);
     const startY = this.MARGIN; // header removed; top panel already drawn
     const gutter = 4;
 
@@ -225,18 +230,18 @@ class TraditionalPdfGenerator {
     const dam = pedigreeData?.bird?.dam || null;
 
     // Col 1: Parents
-    this.drawPedigreeBox(doc, colX[0], gridTop, colW[0], h2, sire, null, commonAncestors, false, 1);
-    this.drawPedigreeBox(doc, colX[0], gridTop + h2, colW[0], h2, dam, null, commonAncestors, false, 1);
+    this.drawPedigreeBox(doc, colX[0], gridTop, colW[0], h2, sire, null, commonAncestors, false, 1, settings);
+    this.drawPedigreeBox(doc, colX[0], gridTop + h2, colW[0], h2, dam, null, commonAncestors, false, 1, settings);
 
     // Col 2: Grandparents
     const pgf = sire?.sire || null; // paternal grandfather
     const pgm = sire?.dam || null;  // paternal grandmother
     const mgf = dam?.sire || null;  // maternal grandfather
     const mgm = dam?.dam || null;   // maternal grandmother
-    this.drawPedigreeBox(doc, colX[1], gridTop, colW[1], h4, pgf, null, commonAncestors, false, 2);
-    this.drawPedigreeBox(doc, colX[1], gridTop + h4, colW[1], h4, pgm, null, commonAncestors, false, 2);
-    this.drawPedigreeBox(doc, colX[1], gridTop + h4 * 2, colW[1], h4, mgf, null, commonAncestors, false, 2);
-    this.drawPedigreeBox(doc, colX[1], gridTop + h4 * 3, colW[1], h4, mgm, null, commonAncestors, false, 2);
+    this.drawPedigreeBox(doc, colX[1], gridTop, colW[1], h4, pgf, null, commonAncestors, false, 2, settings);
+    this.drawPedigreeBox(doc, colX[1], gridTop + h4, colW[1], h4, pgm, null, commonAncestors, false, 2, settings);
+    this.drawPedigreeBox(doc, colX[1], gridTop + h4 * 2, colW[1], h4, mgf, null, commonAncestors, false, 2, settings);
+    this.drawPedigreeBox(doc, colX[1], gridTop + h4 * 3, colW[1], h4, mgm, null, commonAncestors, false, 2, settings);
 
     // Col 3: Great-grandparents
     const gg = [
@@ -247,7 +252,7 @@ class TraditionalPdfGenerator {
     ];
     for (let i = 0; i < 8; i++) {
       const y = gridTop + h8 * i;
-      this.drawPedigreeBox(doc, colX[2], y, colW[2], h8, gg[i] || null, null, commonAncestors, false, 3);
+      this.drawPedigreeBox(doc, colX[2], y, colW[2], h8, gg[i] || null, null, commonAncestors, false, 3, settings);
     }
 
     // Col 4: Optionally extend to 5th generation if available (draw as 'No data' if missing)
@@ -255,12 +260,12 @@ class TraditionalPdfGenerator {
     const h16 = gridHeight / 16;
     for (let i = 0; i < 16; i++) {
       const y = gridTop + h16 * i;
-      this.drawPedigreeBox(doc, colX[3], y, colW[3], h16, ggg[i] || null, null, commonAncestors, true, 4);
+      this.drawPedigreeBox(doc, colX[3], y, colW[3], h16, ggg[i] || null, null, commonAncestors, true, 4, settings);
     }
   }
 
   // Draw a single pedigree box (or 'No data') with colored header strip
-  drawPedigreeBox(doc, x, y, w, h, bird, headerColorRGB = null, commonAncestors = [], isLastGeneration = false, generation = 1) {
+  drawPedigreeBox(doc, x, y, w, h, bird, headerColorRGB = null, commonAncestors = [], isLastGeneration = false, generation = 1, settings = {}) {
     // Border
     doc.setDrawColor(...this.COLORS.black);
     doc.setLineWidth(0.4);
@@ -274,14 +279,35 @@ class TraditionalPdfGenerator {
       const normalizedAncestors = commonAncestors.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
       const isCommonAncestor = birdId && normalizedAncestors.includes(birdId);
       
-      // Header color - highlight if common ancestor
-      const headerColor = isCommonAncestor ? [144, 238, 144] : (headerColorRGB || [235, 235, 235]);
-      doc.setFillColor(...headerColor);
-      doc.rect(x, y, w, headerH, 'F');
+      // Get the highlight color from the duplicateColors map if available
+      let headerColor = headerColorRGB || [235, 235, 235];
       
       if (isCommonAncestor) {
-        console.log(`Highlighting common ancestor: ${bird.name} (ID: ${birdId})`, normalizedAncestors);
+        // Check if we have a specific color for this duplicate group
+        const duplicateInfo = settings.duplicateColors?.get(birdId);
+        if (duplicateInfo) {
+          // Extract RGB values from the color string (e.g., 'rgb(255,200,200)')
+          const rgbMatch = duplicateInfo.color.match(/\d+/g);
+          if (rgbMatch && rgbMatch.length >= 3) {
+            headerColor = [
+              parseInt(rgbMatch[0]),
+              parseInt(rgbMatch[1]),
+              parseInt(rgbMatch[2])
+            ];
+          } else {
+            // Fallback to light green if color parsing fails
+            headerColor = [144, 238, 144];
+          }
+          console.log(`Highlighting duplicate bird: ${bird.ring_number || bird.name} (ID: ${birdId}) with color`, headerColor);
+        } else {
+          // Fallback to light green if no specific color is set
+          headerColor = [144, 238, 144];
+        }
       }
+      
+      // Apply the header color
+      doc.setFillColor(...headerColor);
+      doc.rect(x, y, w, headerH, 'F');
 
       // Header text: Ring (left) and Year (right)
       const ring = bird.ring_number || '';

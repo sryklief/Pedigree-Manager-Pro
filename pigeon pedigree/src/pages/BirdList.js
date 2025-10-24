@@ -16,6 +16,7 @@ import {
   List,
   ListItem,
   ListItemAvatar,
+  ListItemIcon,
   ListItemText,
   Avatar,
   ButtonGroup,
@@ -112,7 +113,7 @@ const BirdList = () => {
 
   const handleDeleteBird = () => {
     setDeleteDialog(true);
-    handleMenuClose();
+    setAnchorEl(null);
   };
 
   const confirmDelete = async () => {
@@ -241,46 +242,51 @@ const BirdList = () => {
       </Box>
 
       {/* Search and Filters */}
-      <Box mb={4}>
-        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-          <TextField
-            placeholder="Search birds by name, ring details, breed, or color..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flexGrow: 1, maxWidth: 600 }}
-          />
-          <ButtonGroup variant="outlined">
-            <Button
-              variant={sexFilter === 'all' ? 'contained' : 'outlined'}
-              onClick={() => setSexFilter('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={sexFilter === 'male' ? 'contained' : 'outlined'}
-              startIcon={<MaleIcon />}
-              onClick={() => setSexFilter('male')}
-              color="info"
-            >
-              Males
-            </Button>
-            <Button
-              variant={sexFilter === 'female' ? 'contained' : 'outlined'}
-              startIcon={<FemaleIcon />}
-              onClick={() => setSexFilter('female')}
-              color="secondary"
-            >
-              Females
-            </Button>
-          </ButtonGroup>
-        </Box>
+      <Box 
+        mb={4} 
+        display="flex" 
+        justifyContent="space-between" 
+        alignItems="center"
+        flexWrap="wrap"
+        gap={2}
+      >
+        <TextField
+          placeholder="Search birds by name, ring details, breed, or color..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ minWidth: 500, maxWidth: 800 }}
+        />
+        <ButtonGroup variant="outlined">
+          <Button
+            variant={sexFilter === 'all' ? 'contained' : 'outlined'}
+            onClick={() => setSexFilter('all')}
+          >
+            All
+          </Button>
+          <Button
+            variant={sexFilter === 'male' ? 'contained' : 'outlined'}
+            startIcon={<MaleIcon />}
+            onClick={() => setSexFilter('male')}
+            color="info"
+          >
+            Males
+          </Button>
+          <Button
+            variant={sexFilter === 'female' ? 'contained' : 'outlined'}
+            startIcon={<FemaleIcon />}
+            onClick={() => setSexFilter('female')}
+            color="secondary"
+          >
+            Females
+          </Button>
+        </ButtonGroup>
       </Box>
 
       {/* Birds List */}
@@ -309,24 +315,36 @@ const BirdList = () => {
       )}
 
       {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
+      <Dialog
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        PaperProps={{
+          style: {
+            minWidth: '200px',
+            padding: '8px',
+            borderRadius: '5px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+          }
+        }}
       >
-        <MenuItem onClick={handleViewPedigree}>
-          <PedigreeIcon sx={{ mr: 1 }} />
-          View Pedigree
-        </MenuItem>
-        <MenuItem onClick={handleEditBird}>
-          <EditIcon sx={{ mr: 1 }} />
-          Edit Bird
-        </MenuItem>
-        <MenuItem onClick={handleDeleteBird} sx={{ color: 'error.main' }}>
-          <DeleteIcon sx={{ mr: 1 }} />
-          Delete Bird
-        </MenuItem>
-      </Menu>
+        <DialogTitle>Bird Actions</DialogTitle>
+        <DialogContent>
+          <List>
+            <ListItem button onClick={handleViewPedigree}>
+              <ListItemIcon><PedigreeIcon /></ListItemIcon>
+              <ListItemText primary="View Pedigree" />
+            </ListItem>
+            <ListItem button onClick={handleEditBird}>
+              <ListItemIcon><EditIcon /></ListItemIcon>
+              <ListItemText primary="Edit Bird" />
+            </ListItem>
+            <ListItem button onClick={handleDeleteBird} sx={{ color: 'error.main' }}>
+              <ListItemIcon><DeleteIcon color="error" /></ListItemIcon>
+              <ListItemText primary="Delete Bird" />
+            </ListItem>
+          </List>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>

@@ -2,7 +2,7 @@ import DatabaseService from './database';
 import TraditionalPdfGenerator from './traditionalPdfGenerator';
 
 class PedigreeExporter {
-  static async exportToPDF(bird, commonAncestors = []) {
+  static async exportToPDF(bird, commonAncestors = [], duplicateColors = new Map()) {
     try {
       // Get user settings for PDF generation
       const settings = await DatabaseService.getSettings();
@@ -15,7 +15,8 @@ class PedigreeExporter {
         loftPhone: settings.loftPhone || '',
         loftEmail: settings.loftEmail || '',
         breederName: settings.breederName || '',
-        ...settings
+        ...settings,
+        duplicateColors // Pass the color mapping to the PDF generator
       });
 
     } catch (error) {

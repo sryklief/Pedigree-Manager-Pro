@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Typography, Paper, Chip } from '@mui/material';
 
-const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
+const PedigreeTree = ({ pedigreeData, commonAncestors = [], duplicateColors = new Map() }) => {
+  // Normalize common ancestor IDs to numbers for consistent comparison
+  const normalizedCommonAncestors = commonAncestors.map(id => 
+    typeof id === 'string' ? parseInt(id, 10) : id
+  );
   const [selectedBird, setSelectedBird] = useState(null);
 
   if (!pedigreeData || !pedigreeData.bird) {
@@ -12,12 +16,25 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
     );
   }
 
-  // Normalize common ancestor IDs to numbers for consistent comparison
-  const normalizedCommonAncestors = commonAncestors.map(id => 
-    typeof id === 'string' ? parseInt(id, 10) : id
-  );
+  // Helper to get the color for a bird if it's a common ancestor
+  const getBirdHighlightColor = (bird) => {
+    if (!bird?.id) return null;
+    const birdId = typeof bird.id === 'string' ? parseInt(bird.id, 10) : bird.id;
+    const colorInfo = duplicateColors.get(birdId);
+    return colorInfo ? colorInfo.color : null;
+  };
 
-  const BirdBox = ({ bird, isCommon = false }) => {
+  // Check if a bird is a common ancestor
+  const isCommonAncestor = (bird) => {
+    if (!bird?.id) return false;
+    const birdId = typeof bird.id === 'string' ? parseInt(bird.id, 10) : bird.id;
+    return commonAncestors.includes(birdId);
+  };
+
+  const BirdBox = ({ bird }) => {
+    const highlightColor = getBirdHighlightColor(bird);
+    // If we have a highlight color, use that instead of the common ancestor color
+    const isCommon = highlightColor ? false : isCommonAncestor(bird);
     if (!bird) {
       return (
         <Paper
@@ -49,10 +66,12 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
           p: 1.5,
           height: '100%',
           minHeight: 80,
-          bgcolor: isCommon ? 'error.lighter' : 'background.paper',
+          bgcolor: highlightColor ? `${highlightColor}33` : (isCommon ? 'error.lighter' : 'background.paper'),
           border: '2px solid',
           borderColor: isSelected
             ? 'primary.main'
+            : highlightColor
+            ? highlightColor
             : isCommon
             ? 'error.main'
             : 'grey.300',
@@ -60,6 +79,8 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
             elevation: 4,
             borderColor: isSelected
               ? 'primary.dark'
+              : highlightColor
+              ? highlightColor
               : isCommon
               ? 'error.dark'
               : 'primary.main'
@@ -166,10 +187,7 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
             Generation 1
           </Typography>
           <Box display="flex" flexDirection="column" justifyContent="center" height="calc(100% - 24px)">
-            <BirdBox
-              bird={generations[0][0]}
-              isCommon={normalizedCommonAncestors.includes(typeof generations[0][0]?.id === 'string' ? parseInt(generations[0][0].id, 10) : generations[0][0]?.id)}
-            />
+            <BirdBox bird={generations[0][0]} />
           </Box>
         </Box>
 
@@ -183,7 +201,6 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
               <BirdBox
                 key={i}
                 bird={generations[1][i]}
-                isCommon={normalizedCommonAncestors.includes(typeof generations[1][i]?.id === 'string' ? parseInt(generations[1][i].id, 10) : generations[1][i]?.id)}
               />
             ))}
           </Box>
@@ -199,7 +216,6 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
               <BirdBox
                 key={i}
                 bird={generations[2][i]}
-                isCommon={normalizedCommonAncestors.includes(typeof generations[2][i]?.id === 'string' ? parseInt(generations[2][i].id, 10) : generations[2][i]?.id)}
               />
             ))}
           </Box>
@@ -215,7 +231,6 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
               <BirdBox
                 key={i}
                 bird={generations[3][i]}
-                isCommon={normalizedCommonAncestors.includes(typeof generations[3][i]?.id === 'string' ? parseInt(generations[3][i].id, 10) : generations[3][i]?.id)}
               />
             ))}
           </Box>
@@ -231,7 +246,6 @@ const PedigreeTree = ({ pedigreeData, commonAncestors = [] }) => {
               <BirdBox
                 key={i}
                 bird={generations[4][i]}
-                isCommon={normalizedCommonAncestors.includes(typeof generations[4][i]?.id === 'string' ? parseInt(generations[4][i].id, 10) : generations[4][i]?.id)}
               />
             ))}
           </Box>

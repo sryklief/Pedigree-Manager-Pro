@@ -126,18 +126,33 @@ const AddBird = () => {
   };
 
 
-  const validateForm = () => {
+  const validateForm = async () => {
     if (!formData.sex) {
       setError('Sex is required');
       return false;
     }
+
+    // Check for duplicate ring number if ring_number is provided
+    if (formData.ring_number) {
+      const isDuplicate = await DatabaseService.checkDuplicateRingNumber(
+        formData.ring_number.toUpperCase(),
+        formData.year,
+        isEdit ? id : null
+      );
+      
+      if (isDuplicate) {
+        setError('A pigeon with this ring number and year already exists');
+        return false;
+      }
+    }
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!(await validateForm())) {
       return;
     }
 

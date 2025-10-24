@@ -24,7 +24,10 @@ const PedigreeView = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [bird, setBird] = useState(null);
-  const [commonAncestors, setCommonAncestors] = useState([]);
+  const [commonAncestors, setCommonAncestors] = useState({
+    allDuplicateIds: [],
+    duplicates: new Map()
+  });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
@@ -47,14 +50,17 @@ const PedigreeView = () => {
 
   const loadBirdData = async () => {
     try {
-      const [birdData, ancestorIds, pedigree] = await Promise.all([
+      const [birdData, ancestorData, pedigree] = await Promise.all([
         DatabaseService.getBirdById(id),
         DatabaseService.findCommonAncestors(id),
         DatabaseService.getPedigree(id, 5)
       ]);
       
       setBird(birdData);
-      setCommonAncestors(ancestorIds);
+      setCommonAncestors({
+        allDuplicateIds: ancestorData.allDuplicateIds,
+        duplicates: ancestorData.duplicates
+      });
       setPedigreeData(pedigree);
     } catch (error) {
       console.error('Error loading bird data:', error);
@@ -72,8 +78,14 @@ const PedigreeView = () => {
     setSuccess('');
     
     try {
-      const ancestorIds = await DatabaseService.findCommonAncestors(id);
-      const result = await PedigreeExporter.exportToPDF(bird, ancestorIds);
+      // Get the latest duplicate colors and ancestor IDs
+      const { allDuplicateIds: ancestorIds, duplicates: duplicateColors } = await DatabaseService.findCommonAncestors(id);
+      
+      // Log for debugging
+      console.log('Exporting PDF with duplicate colors:', duplicateColors);
+      
+      // Pass both ancestor IDs and duplicate colors to the PDF exporter
+      const result = await PedigreeExporter.exportToPDF(bird, ancestorIds, duplicateColors);
       setSuccess('PDF downloaded successfully!');
       
       // If this was an auto-export, navigate back after a short delay
@@ -179,7 +191,11 @@ const PedigreeView = () => {
             </Typography>
           </Alert>
           <Paper elevation={2} sx={{ p: 3 }}>
-            <PedigreeTree pedigreeData={pedigreeData} commonAncestors={commonAncestors} />
+            <PedigreeTree 
+              pedigreeData={pedigreeData} 
+              commonAncestors={commonAncestors.allDuplicateIds} 
+              duplicateColors={commonAncestors.duplicates}
+            />
           </Paper>
         </>
       )}

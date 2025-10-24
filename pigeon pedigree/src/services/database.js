@@ -350,6 +350,33 @@ class DatabaseService {
     }
   }
 
+  static async checkDuplicateRingNumber(ringNumber, year, excludeId = null) {
+    if (!ringNumber) return false;
+    
+    if (window.electronAPI) {
+      // Production mode - check SQLite
+      const query = `
+        SELECT id FROM birds 
+        WHERE ring_number = ? AND year = ? 
+        ${excludeId ? 'AND id != ?' : ''}
+        LIMIT 1
+      `;
+      const params = [ringNumber, year];
+      if (excludeId) params.push(excludeId);
+      
+      const result = await this.query(query, params);
+      return result.length > 0;
+    } else {
+      // Development mode - check localStorage
+      const data = this.getDevStorage();
+      return data.birds.some(bird => 
+        bird.ring_number === ringNumber && 
+        bird.year === year && 
+        (excludeId ? bird.id != excludeId : true)
+      );
+    }
+  }
+
   static async updateBird(id, birdData) {
     const {
       name, ring_number, sex, color, breed, year, notes,
@@ -394,11 +421,19 @@ class DatabaseService {
 
   static async deleteBird(id) {
     if (window.electronAPI) {
+      await this.run('UPDATE birds SET sire_id = NULL WHERE sire_id = ?', [id]);
+      await this.run('UPDATE birds SET dam_id = NULL WHERE dam_id = ?', [id]);
       await this.run('DELETE FROM birds WHERE id = ?', [id]);
     } else {
       // Development mode - delete from localStorage
       const data = this.getDevStorage();
-      data.birds = data.birds.filter(b => b.id != id);
+      data.birds = data.birds
+        .map(b => ({
+          ...b,
+          sire_id: b.sire_id == id ? null : b.sire_id,
+          dam_id: b.dam_id == id ? null : b.dam_id
+        }))
+        .filter(b => b.id != id);
       this.setDevStorage(data);
     }
   }
@@ -485,8 +520,8 @@ class DatabaseService {
 
   static async findCommonAncestors(birdId, generations = 5) {
     const pedigree = await this.getPedigree(birdId, generations);
-    const ancestors = new Map();
-    const commonAncestors = new Set();
+    const ancestors = new Map(); // Tracks first occurrence of each bird
+    const duplicates = []; // Tracks groups of duplicate birds
     
     const collectAncestors = (bird, path = '', isMainBird = false) => {
       if (!bird) return;
@@ -496,9 +531,29 @@ class DatabaseService {
       // Don't count the main bird as a common ancestor
       if (!isMainBird) {
         if (ancestors.has(key)) {
-          commonAncestors.add(key);
-          console.log(`Found common ancestor: ${bird.name} (ID: ${key}) at path ${path}`);
+          // This is a duplicate bird
+          const existing = ancestors.get(key);
+          const duplicateGroup = duplicates.find(group => group.id === key);
+          
+          if (duplicateGroup) {
+            // Add this occurrence to existing group
+            duplicateGroup.occurrences.push({
+              bird,
+              path
+            });
+          } else {
+            // Create new duplicate group with both occurrences
+            duplicates.push({
+              id: key,
+              bird,
+              occurrences: [
+                { bird: existing.bird, path: existing.path },
+                { bird, path }
+              ]
+            });
+          }
         } else {
+          // First time seeing this bird
           ancestors.set(key, { bird, path });
         }
       }
@@ -508,14 +563,51 @@ class DatabaseService {
     };
     
     collectAncestors(pedigree.bird, '', true);
+    
+    // Assign a unique color to each duplicate group
+    const colorPalette = [
+      [255, 200, 200], // Light red
+      [200, 230, 200], // Light green
+      [200, 200, 255], // Light blue
+      [255, 255, 200], // Light yellow
+      [255, 200, 255], // Light purple
+      [200, 255, 255], // Light cyan
+      [255, 220, 200], // Light orange
+      [220, 200, 255], // Light lavender
+      [200, 240, 240], // Light teal
+      [255, 220, 220], // Light pink
+      [220, 255, 200], // Light lime
+      [240, 200, 200], // Light salmon
+      [200, 200, 220], // Light periwinkle
+      [255, 240, 200], // Light peach
+      [220, 220, 255], // Light periwinkle blue
+      [200, 255, 220]  // Light mint
+    ];
+    
+    // Create a map of bird ID to color
+    const colorMap = new Map();
+    duplicates.forEach((group, index) => {
+      const color = colorPalette[index % colorPalette.length];
+      colorMap.set(group.id, {
+        color: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+        occurrences: group.occurrences.length + 1 // +1 for the first occurrence
+      });
+    });
+    
     console.log('=== Common Ancestors Detection ===');
     console.log('Total unique ancestors:', ancestors.size);
-    console.log('Common ancestors found:', Array.from(commonAncestors));
-    console.log('Common ancestor details:', Array.from(commonAncestors).map(id => {
-      const ancestor = ancestors.get(id);
-      return { id, name: ancestor?.bird?.name, ring: ancestor?.bird?.ring_number };
-    }));
-    return Array.from(commonAncestors);
+    console.log('Duplicate groups:', duplicates.map(g => ({
+      id: g.id,
+      name: g.bird.name,
+      ring: g.bird.ring_number,
+      occurrences: g.occurrences.length + 1
+    })));
+    
+    return {
+      duplicates: colorMap,
+      duplicateGroups: duplicates,
+      allDuplicateIds: Array.from(new Set(duplicates.map(g => g.id)))
+    };
   }
 
   // Settings operations
