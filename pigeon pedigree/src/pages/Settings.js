@@ -13,7 +13,9 @@ import {
 import {
   Save as SaveIcon,
   Business as BusinessIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  CloudUpload as UploadIcon,
+  CloudDownload as DownloadIcon
 } from '@mui/icons-material';
 import DatabaseService from '../services/database';
 
@@ -33,6 +35,8 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -95,6 +99,77 @@ const Settings = () => {
       setMessage({ type: 'error', text: 'Error saving settings. Please try again.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const result = await DatabaseService.exportAllData();
+      setMessage({ 
+        type: 'success', 
+        text: `Successfully exported ${result.count} birds!` 
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Error exporting data. Please try again.' 
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setImporting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // Validate file first
+      const validation = await DatabaseService.validateImportFile(file);
+      
+      if (!validation.valid) {
+        setMessage({ 
+          type: 'error', 
+          text: `Invalid file: ${validation.error}` 
+        });
+        return;
+      }
+
+      // Confirm import
+      const confirmMsg = `This will import ${validation.birdCount} birds. Existing birds with the same ID will be updated. Continue?`;
+      if (!window.confirm(confirmMsg)) {
+        setMessage({ type: 'info', text: 'Import cancelled.' });
+        return;
+      }
+
+      // Read and import file
+      const text = await file.text();
+      const result = await DatabaseService.importData(text);
+
+      setMessage({ 
+        type: 'success', 
+        text: `Successfully imported ${result.imported} new birds and updated ${result.updated} existing birds!` 
+      });
+
+      // Reload settings in case they were updated
+      await loadSettings();
+    } catch (error) {
+      console.error('Error importing data:', error);
+      setMessage({ 
+        type: 'error', 
+        text: `Error importing data: ${error.message}` 
+      });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -192,6 +267,54 @@ const Settings = () => {
                   />
                 </Grid>
               </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Data Management */}
+          <Card sx={{ mt: 3 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" mb={3}>
+                Data Management
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                Export your data as a backup or import data from a previous backup.
+              </Typography>
+
+              <Box display="flex" flexDirection="column" gap={2}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExport}
+                  disabled={exporting}
+                >
+                  {exporting ? 'Exporting...' : 'Export All Data'}
+                </Button>
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  component="label"
+                  startIcon={<UploadIcon />}
+                  disabled={importing}
+                >
+                  {importing ? 'Importing...' : 'Import Data'}
+                  <input
+                    type="file"
+                    accept=".json"
+                    hidden
+                    onChange={handleImport}
+                  />
+                </Button>
+              </Box>
+
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="caption">
+                  <strong>Note:</strong> Your data is stored locally and remains safe. 
+                  Export creates a backup file you can save anywhere.
+                </Typography>
+              </Alert>
             </CardContent>
           </Card>
 

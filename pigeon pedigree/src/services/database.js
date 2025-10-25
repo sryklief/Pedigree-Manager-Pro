@@ -668,6 +668,125 @@ class DatabaseService {
       recentBirds: recentBirds[0]?.count || 0
     };
   }
+
+  // Export/Import operations
+  static async exportAllData() {
+    try {
+      const birds = await this.getAllBirds();
+      const settings = await this.getSettings();
+      
+      const exportData = {
+        version: '1.0.0',
+        exportDate: new Date().toISOString(),
+        birds: birds,
+        settings: settings,
+        metadata: {
+          totalBirds: birds.length,
+          appVersion: '1.0.0'
+        }
+      };
+
+      // Create a downloadable JSON file
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pedigree-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      return { success: true, count: birds.length };
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      throw error;
+    }
+  }
+
+  static async importData(jsonData) {
+    try {
+      // Parse the JSON data
+      const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+      
+      // Validate the data structure
+      if (!data.birds || !Array.isArray(data.birds)) {
+        throw new Error('Invalid data format: missing birds array');
+      }
+
+      // Get current data for backup
+      const currentBirds = await this.getAllBirds();
+      const currentSettings = await this.getSettings();
+
+      console.log(`Importing ${data.birds.length} birds...`);
+
+      // Import birds
+      let importedCount = 0;
+      let skippedCount = 0;
+      let updatedCount = 0;
+
+      for (const bird of data.birds) {
+        try {
+          // Check if bird already exists
+          const existing = await this.getBirdById(bird.id);
+          
+          if (existing) {
+            // Update existing bird
+            await this.updateBird(bird.id, bird);
+            updatedCount++;
+          } else {
+            // Create new bird
+            await this.createBird(bird);
+            importedCount++;
+          }
+        } catch (error) {
+          console.error(`Error importing bird ${bird.id}:`, error);
+          skippedCount++;
+        }
+      }
+
+      // Import settings if available
+      if (data.settings && typeof data.settings === 'object') {
+        for (const [key, value] of Object.entries(data.settings)) {
+          await this.setSetting(key, value);
+        }
+      }
+
+      return {
+        success: true,
+        imported: importedCount,
+        updated: updatedCount,
+        skipped: skippedCount,
+        total: data.birds.length
+      };
+    } catch (error) {
+      console.error('Error importing data:', error);
+      throw error;
+    }
+  }
+
+  static async validateImportFile(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      // Basic validation
+      if (!data.birds || !Array.isArray(data.birds)) {
+        return { valid: false, error: 'Invalid file format: missing birds data' };
+      }
+
+      return {
+        valid: true,
+        birdCount: data.birds.length,
+        exportDate: data.exportDate,
+        version: data.version
+      };
+    } catch (error) {
+      return { valid: false, error: error.message };
+    }
+  }
 }
 
 export default DatabaseService;
