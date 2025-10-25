@@ -106,11 +106,14 @@ const AddBird = () => {
         [field]: value
       };
       
-      // Auto-combine ring letters and numbers into ring_number
+      // Auto-combine ring letters and numbers into ring_number with a space in between
       if (field === 'ring_letters' || field === 'ring_numbers') {
         const letters = field === 'ring_letters' ? value : prev.ring_letters;
         const numbers = field === 'ring_numbers' ? value : prev.ring_numbers;
-        updated.ring_number = `${letters}${numbers}`;
+        // Only add a space if both letters and numbers are present
+        updated.ring_number = letters && numbers ? 
+          `${letters} ${numbers}` : 
+          `${letters}${numbers}`;
       }
       
       return updated;
@@ -257,13 +260,13 @@ const AddBird = () => {
                     <MenuItem value="male">
                       <Box display="flex" alignItems="center">
                         <MaleIcon sx={{ mr: 1 }} />
-                        Male
+                        Cock
                       </Box>
                     </MenuItem>
                     <MenuItem value="female">
                       <Box display="flex" alignItems="center">
                         <FemaleIcon sx={{ mr: 1 }} />
-                        Female
+                        Hen
                       </Box>
                     </MenuItem>
                   </Select>

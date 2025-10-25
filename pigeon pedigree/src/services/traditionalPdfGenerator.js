@@ -76,13 +76,37 @@ class TraditionalPdfGenerator {
     let ty = innerTop + 3;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    const ring = bird.ring_number ? `(${bird.ring_number})` : '';
+    
+    // Get year from date_of_birth or year field
+    let year = null;
+    if (bird.date_of_birth) {
+      const d = new Date(bird.date_of_birth);
+      if (!isNaN(d.getTime())) year = d.getFullYear();
+    }
+    if (year == null && typeof bird.year !== 'undefined') year = bird.year;
+    
+    // Format ring number with year if available (year in 2-digit format)
+    const shortYear = year ? String(year).slice(-2) : '';
+    const ring = bird.ring_number ? `${bird.ring_number}${shortYear ? ' ' + shortYear : ''}` : '';
     const color = bird.color ? `Color: ${bird.color}` : null;
-    const sex = bird.sex ? `Sex: ${bird.sex}` : null;
+    const sex = bird.sex ? `Sex: ${bird.sex === 'male' ? 'Cock' : bird.sex === 'female' ? 'Hen' : bird.sex}` : null;
     const breed = bird.breed ? `Strain: ${bird.breed}` : null;
+    
     const parts = [color, sex, breed].filter(Boolean);
-    if (ring) { doc.setFont('helvetica', 'bold'); doc.text(ring, tx, ty); ty += 5; doc.setFont('helvetica', 'normal'); };
-    if (parts.length) { doc.text(parts.join(' | '), tx, ty); ty += 5; }
+    
+    // Draw ring number with year (bold)
+    if (ring) { 
+      doc.setFont('helvetica', 'bold'); 
+      doc.text(ring, tx, ty); 
+      ty += 5; 
+      doc.setFont('helvetica', 'normal'); 
+    };
+    
+    // Draw other details
+    if (parts.length) { 
+      doc.text(parts.join(' | '), tx, ty); 
+      ty += 5; 
+    }
     // Contact line
     let contact = '';
     if (settings?.loftPhone) contact += `Tel: ${settings.loftPhone}`;
@@ -124,7 +148,7 @@ class TraditionalPdfGenerator {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     const color = bird.color ? `Color: ${bird.color}` : null;
-    const sex = bird.sex ? `Sex: ${bird.sex}` : null;
+    const sex = bird.sex ? `Sex: ${bird.sex === 'male' ? 'Cock' : bird.sex === 'female' ? 'Hen' : bird.sex}` : null;
     const breed = bird.breed ? `Strain: ${bird.breed}` : null;
     const parts = [color, sex, breed].filter(Boolean);
     if (parts.length) doc.text(parts.join(' | '), tx, ty);
@@ -198,7 +222,7 @@ class TraditionalPdfGenerator {
     console.log('commonAncestors types:', commonAncestors.map(id => typeof id));
     console.log('Main bird ID:', bird.id, 'type:', typeof bird.id);
     const startY = this.MARGIN; // header removed; top panel already drawn
-    const gutter = 4;
+    const gutter = 1;
 
     // Grid starts below the combined top panel
     const gridTop = startY + topPanelH + gutter;
@@ -266,14 +290,13 @@ class TraditionalPdfGenerator {
 
   // Draw a single pedigree box (or 'No data') with colored header strip
   drawPedigreeBox(doc, x, y, w, h, bird, headerColorRGB = null, commonAncestors = [], isLastGeneration = false, generation = 1, settings = {}) {
-    // Border
-    doc.setDrawColor(...this.COLORS.black);
-    doc.setLineWidth(0.4);
-    doc.rect(x, y, w, h);
-
     // Header strip
     const headerH = 6;
     if (bird) {
+      // Draw the border first (behind everything)
+      doc.setDrawColor(...this.COLORS.black);
+      doc.setLineWidth(0.4);
+      doc.rect(x, y, w, h);
       // Normalize IDs to numbers for comparison
       const birdId = typeof bird.id === 'string' ? parseInt(bird.id, 10) : bird.id;
       const normalizedAncestors = commonAncestors.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
@@ -305,26 +328,44 @@ class TraditionalPdfGenerator {
         }
       }
       
-      // Apply the header color
+      // Apply the header color (after border)
       doc.setFillColor(...headerColor);
       doc.rect(x, y, w, headerH, 'F');
+      
+      // Redraw the border on top of the filled area
+      doc.setDrawColor(...this.COLORS.black);
+      doc.setLineWidth(0.4);
+      doc.rect(x, y, w, headerH);
 
       // Header text: Ring (left) and Year (right)
-      const ring = bird.ring_number || '';
+      let ring = bird.ring_number || '';
       let year = null;
       if (bird.date_of_birth) {
         const d = new Date(bird.date_of_birth);
         if (!isNaN(d.getTime())) year = d.getFullYear();
       }
       if (year == null && typeof bird.year !== 'undefined') year = bird.year;
+      
       doc.setTextColor(...this.COLORS.black);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      if (ring) doc.text(String(ring), x + 3, y + headerH - 1.5);
+      doc.setFontSize(8); // Slightly smaller font for better fit
+      
+      // Format ring number to ensure space between letters and numbers
+      if (ring) {
+        // Add space between letters and numbers if not already present
+        const match = ring.match(/^([A-Za-z]+)([0-9].*)$/);
+        if (match && !ring.includes(' ')) {
+          ring = `${match[1]} ${match[2]}`;
+        }
+        
+        // Draw ring number (left-aligned)
+        doc.text(ring, x + 2, y + headerH - 1.5);
+      }
+      
+      // Draw year (right-aligned)
       if (year != null) {
-        // Display year in 2-digit format (e.g., 2022 -> 22, 1996 -> 96)
         const shortYear = String(year).slice(-2);
-        doc.text(shortYear, x + w - 3, y + headerH - 1.5, { align: 'right' });
+        doc.text(shortYear, x + w - 4, y + headerH - 1.5, { align: 'right' });
       }
     } else {
       doc.setFillColor(...this.COLORS.lightGray);
@@ -332,10 +373,11 @@ class TraditionalPdfGenerator {
       return;
     }
 
-    // Text padding
-    const pad = 3;
+    // Text padding - keeping horizontal padding reduced, restoring vertical padding
+    const pad = 2; // Horizontal padding (reduced from 4 to 2)
+    const vpad = 4; // Vertical padding (restored to original value)
     let tx = x + pad;
-    let ty = y + headerH + pad + 1; // Reduced padding a bit
+    let ty = y + headerH + vpad; // Restored vertical padding
 
     doc.setTextColor(...this.COLORS.black);
     doc.setFont('helvetica', 'normal');
@@ -350,19 +392,69 @@ class TraditionalPdfGenerator {
     }
 
     // Breed and Color for all generations
-    if (bird.breed) { doc.text(`Strain: ${bird.breed}`, tx, ty, { maxWidth: w - pad * 2 }); ty += 4; }
-    if (generation <= 2 && bird.color) { doc.text(`Color: ${bird.color}`, tx, ty, { maxWidth: w - pad * 2 }); ty += 4; }
+    const textWidth = w - (pad * 2); // Keep reduced horizontal padding
+    if (bird.breed) { doc.text(`Strain: ${bird.breed}`, tx, ty, { maxWidth: textWidth }); ty += 4; } // Restored vertical spacing
+    if (generation <= 2 && bird.color) { doc.text(`Color: ${bird.color}`, tx, ty, { maxWidth: textWidth }); ty += 4; } // Restored vertical spacing
 
 
-    // Notes (wrap, clipped to box)
+    // Notes (wrap, with better space utilization)
     if (bird.notes && bird.notes.trim()) {
-      const maxWidth = w - pad * 2;
-      // Use a smaller line height (3.5) to fit more text
-      const lines = doc.splitTextToSize(bird.notes, maxWidth);
-      const maxLines = Math.max(0, Math.floor((y + h - ty - pad) / 3.5)); 
-      doc.setFont('helvetica', 'normal'); // No more italic
+      const maxWidth = w - (pad * 2);
+      const lineHeight = 3.0; // Further reduced line height to fit more text
+      
+      // Calculate available space - using the full height of the box
+      // Reduced bottom padding from 2 to 1 to utilize more space
+      const availableHeight = (y + h) - ty - 1;
+      // Add 0.5 to maxLines to be more aggressive about fitting content
+      const maxLines = Math.max(1, Math.ceil(availableHeight / lineHeight - 0.2));
+      
+      // Split text into lines that fit the width
+      let lines = doc.splitTextToSize(bird.notes, maxWidth);
+      
+      // Set text style
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
       doc.setTextColor(...this.COLORS.darkGray);
-      doc.text(lines.slice(0, maxLines), tx, ty);
+      
+      // Draw as many complete lines as possible
+      const linesToDraw = lines.slice(0, maxLines);
+      
+      // If we have more lines than can fit, process the last line
+      if (lines.length > maxLines) {
+        // Get the last line that will be displayed
+        const lastLine = linesToDraw[maxLines - 1];
+        const remainingText = lines.slice(maxLines).join(' ');
+        const ellipsis = '...';
+        
+        // Try to append as much remaining text as possible to the last line
+        let extendedLine = lastLine;
+        let testLine = lastLine + ' ' + remainingText;
+        
+        // Find how much of the remaining text we can add
+        while (testLine.length > lastLine.length) {
+          if (doc.getTextWidth(testLine + ellipsis) <= maxWidth) {
+            extendedLine = testLine + ellipsis;
+            break;
+          }
+          testLine = testLine.slice(0, -1);
+        }
+        
+        // If we couldn't add any text, just add ellipsis to the last line
+        if (extendedLine === lastLine) {
+          let truncated = lastLine;
+          while (doc.getTextWidth(truncated + ellipsis) > maxWidth && truncated.length > 0) {
+            truncated = truncated.slice(0, -1);
+          }
+          if (truncated.length > 0) {
+            linesToDraw[maxLines - 1] = truncated + ellipsis;
+          }
+        } else {
+          linesToDraw[maxLines - 1] = extendedLine;
+        }
+      }
+      
+      // Draw all lines that fit
+      doc.text(linesToDraw, tx, ty, { maxWidth, lineHeight });
     }
   }
 
